@@ -1,3 +1,4 @@
 http://example.com
 https://xkcd.com/
 https://stackoverflow.com/questions/6984139/how-can-i-get-the-sha1-hash-of-a-string-in-node-js
+https://www.scalemates.com/kits/keil-kraft-k306-t-type-motor-coach--164107#
