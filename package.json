@@ -1,0 +1,31 @@
+{
+  "name": "lighthouse-bulk-runner",
+  "version": "1.0.0",
+  "description": "Compare the performance of different websites and Chrome extensions",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DebugBear/lighthouse-bulk-runner.git"
+  },
+  "keywords": [
+    "lighthouse",
+    "performance"
+  ],
+  "author": "DebugBear",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DebugBear/lighthouse-bulk-runner/issues"
+  },
+  "homepage": "https://github.com/DebugBear/lighthouse-bulk-runner#readme",
+  "dependencies": {
+    "chrome-launcher": "^0.12.0",
+    "commander": "^4.0.1",
+    "lighthouse": "^5.6.0"
+  },
+  "devDependencies": {
+    "prettier": "^1.19.1"
+  }
+}
