@@ -2,7 +2,16 @@
   {
     "extends": "lighthouse:default",
     "settings": {
-      "onlyCategories": ["performance"]
+      "onlyCategories": ["performance"],
+      "throttlingMethod": "devtools"
+    }
+  },
+  {
+    "extends": "lighthouse:default",
+    "settings": {
+      "onlyCategories": ["performance"],
+      "throttlingMethod": "devtools",
+      "extraHeaders": { "Save-Data": "on" }
     }
   }
 ]

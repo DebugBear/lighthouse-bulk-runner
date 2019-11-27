@@ -1,4 +1,11 @@
 http://example.com
 https://xkcd.com/
 https://stackoverflow.com/questions/6984139/how-can-i-get-the-sha1-hash-of-a-string-in-node-js
+https://www.scalemates.com/
 https://www.scalemates.com/kits/keil-kraft-k306-t-type-motor-coach--164107#
+https://blog.imgix.com/2016/03/09/save-data-client-hint
+https://edition.cnn.com/2019/11/23/middleeast/lebanon-economy-protests-intl/index.html
+https://css-tricks.com/the-thought-process-behind-a-flexbox-layout/
+https://www.whatismybrowser.com/detect/what-http-headers-is-my-browser-sending
+https://www.shopify.com/
+https://tattly.com/collections/animals

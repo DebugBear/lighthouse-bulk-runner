@@ -37,12 +37,13 @@ for (var runIndex = 0; runIndex < runCount; runIndex++) {
 
 (async function () {
   for (const [i, run] of Object.entries(runList)) {
-    console.log(`Running ${i}/${runList.length} (${run.url.slice(0, 50)})`)
+
     let lhrFilePath = getLhrPath(run)
 
     if (fs.existsSync(lhrFilePath)) {
       continue
     }
+    console.log(`Running ${parseFloat(i) + 1}/${runList.length} (${run.url.slice(0, 50)})`)
 
     const { lhr } = await collectRunData(run)
     fs.writeFileSync(lhrFilePath, JSON.stringify(lhr, null, 2))
@@ -105,7 +106,6 @@ function generateStats() {
     }
   }
 
-  console.log(csv)
   fs.writeFileSync(program.outDir + "/stats.csv", csv)
 }
 

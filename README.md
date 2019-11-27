@@ -6,9 +6,13 @@ compare headers/throttling methods/chrome versions//...
 
 allows you to run performance analyses and comparisons
 
-# example
+## example
 
 node lighthouse-bulk-runner.js --urls=testing/urls.txt --configs=testing/configs.json --outDir=out
+
+## viewing individual results
+
+copy Lighthouse result (lhr) json and paste it here https://googlechrome.github.io/lighthouse/viewer/
 
 ---
 
