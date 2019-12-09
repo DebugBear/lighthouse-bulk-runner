@@ -45,8 +45,10 @@ for (var runIndex = 0; runIndex < runCount; runIndex++) {
     }
     console.log(`Running ${parseFloat(i) + 1}/${runList.length} (${run.url.slice(0, 50)})`)
 
-    const { lhr } = await collectRunData(run)
-    fs.writeFileSync(lhrFilePath, JSON.stringify(lhr, null, 2))
+    const result = await collectRunData(run)
+    if (result && result.lhr) {
+      fs.writeFileSync(lhrFilePath, JSON.stringify(result.lhr, null, 2))
+    }
   }
 
   generateStats()
@@ -75,37 +77,53 @@ function generateStats() {
     }
   ]
 
-  const headerItems = ["Site/Config"]
+
+  let csv = ""
+  let failedUrls = []
   for (const metric of metrics) {
     for (const stat of metric.stats) {
-      headerItems.push(`${metric.name} [${stat}]`)
-    }
-  }
+      csv += "\nurl,config," + metric.name + "\n"
+      for (const url of urls) {
+        if (failedUrls.indexOf(url) === -1) {
+          for (const config of configs) {
+            let csvLineItems = []
+            let name = url + `,[Config ${getConfigIndexFromHash(configs, getConfigHash(config))}]`
+            csvLineItems.push(name)
+            csvLineItems.push(config.name)
 
-  let csv = headerItems.join(",") + "\n"
-
-  for (const url of urls) {
-    for (const config of configs) {
-      let csvLineItems = []
-      let name = url + ` [Config ${getConfigIndexFromHash(configs, getConfigHash(config))}]`
-      csvLineItems.push(name)
-
-      let runResults = []
-      for (let runIndex = 0; runIndex < runCount; runIndex++) {
-        runResults.push(JSON.parse(fs.readFileSync(getLhrPath({ url, config, runIndex }), "utf-8")))
-      }
-
-      for (const metric of metrics) {
-        let metricValues = runResults.map(lhr => metric.getValue(lhr))
-        for (const stat of metric.stats) {
-          csvLineItems.push(stats[stat](metricValues))
+            let runResults = []
+            let hasError = false
+            for (let runIndex = 0; runIndex < runCount; runIndex++) {
+              let lhrFilePath = getLhrPath({ url, config, runIndex })
+              if (!fs.existsSync(lhrFilePath)) {
+                hasError = true
+                break
+              }
+              else {
+                let results = JSON.parse(fs.readFileSync(lhrFilePath), "utf-8")
+                if (results.runtimeError) {
+                  hasError = true
+                  break
+                }
+                else {
+                  runResults.push(results)
+                }
+              }
+            }
+            if (hasError && failedUrls.indexOf(url) === -1) {
+              console.error(`One or more trials for ${url} has failed. Results will not be generated for this url.`)
+              failedUrls.push(url)
+            }
+            else {
+              let metricValues = runResults.map(lhr => metric.getValue(lhr))
+              csvLineItems.push(stats[stat](metricValues))
+              csv += csvLineItems.join(",") + "\n"
+            }
+          }
         }
       }
-
-      csv += csvLineItems.join(",") + "\n"
     }
   }
-
   fs.writeFileSync(program.outDir + "/stats.csv", csv)
 }
 
