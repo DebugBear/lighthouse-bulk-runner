@@ -89,7 +89,6 @@ function generateStats() {
             let csvLineItems = []
             let name = url + `,[Config ${getConfigIndexFromHash(configs, getConfigHash(config))}]`
             csvLineItems.push(name)
-            csvLineItems.push(config.name)
 
             let runResults = []
             let hasError = false
@@ -114,7 +113,7 @@ function generateStats() {
               console.error(`One or more trials for ${url} has failed. Results will not be generated for this url.`)
               failedUrls.push(url)
             }
-            else {
+            if (failedUrls.indexOf(url) === -1) {
               let metricValues = runResults.map(lhr => metric.getValue(lhr))
               csvLineItems.push(stats[stat](metricValues))
               csv += csvLineItems.join(",") + "\n"
