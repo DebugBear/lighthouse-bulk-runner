@@ -1,0 +1,10 @@
+[
+  {
+    "extends": "lighthouse:default",
+    "settings": {
+      "onlyCategories": ["performance"],
+      "throttlingMethod": "devtools",
+      "extraHeaders": { "Save-Data": "on" }
+    }
+  }
+]

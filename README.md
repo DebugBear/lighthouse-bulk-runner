@@ -7,8 +7,9 @@ compare headers/throttling methods/chrome versions//...
 allows you to run performance analyses and comparisons
 
 ## example
-
-node lighthouse-bulk-runner.js --urls=testing/urls.txt --configs=testing/configs.json --outDir=out
+after setting up Google Cloud container,
+cd queueServer
+node server.js --urls=testing/urls.txt --configs=testing/configs.json --outDir=out --publicUrl=https://12345.ngrok.io
 
 ## viewing individual results
 
