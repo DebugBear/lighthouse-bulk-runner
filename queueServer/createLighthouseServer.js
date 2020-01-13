@@ -23,15 +23,12 @@ module.exports = async function (clientUrl) {
       });
   }
 
+  let currentCount = (await countVMs()).length
 
+  console.log({ currentCount })
 
-  //let currentCount = (await countVMs()).length
-
-  //console.log({ currentCount })
-
-  const sourceInstanceTemplate = `projects/${projectId}/global/instanceTemplates/dbr`;
+  const sourceInstanceTemplate = `projects/${projectId}/global/instanceTemplates/dbr-deletable-1`;
   const url = `https://www.googleapis.com/compute/v1/projects/${projectId}/zones/${zone}/instances?sourceInstanceTemplate=${sourceInstanceTemplate}`;
-  console.log(url);
   let vmName = "vm-" + Math.round(Math.random() * 1000000)
 
   return await client
@@ -52,7 +49,7 @@ module.exports = async function (clientUrl) {
     .then(function (res) {
       const { data, status } = res;
       console.log(status)
-      console.log("launched VM")
+      console.log("launched VM:", vmName)
       return { response: data, status };
     });
 }

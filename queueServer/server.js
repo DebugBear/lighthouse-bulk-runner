@@ -14,10 +14,9 @@ program
   .option('--outDir <outDir>', 'Directory for Lighthouse result and statistics')
   .option('--publicUrl <publicUrl>', 'Public URL for this server - use nGrok or similar')
 
+program.parse(process.argv)
 
-program.parse(process.argv);
-
-const SERVER_COUNT = 1
+const SERVER_COUNT = 3
 
 function getLhrPath(run) {
   let runKey = getRunKey(run)
@@ -51,26 +50,27 @@ for (var runIndex = 0; runIndex < runCount; runIndex++) {
   }
 }
 
-app.get("/getUrl", (req, res) => {
+app.get('/getUrl', (req, res) => {
   if (runList.length === 0) {
-    res.status(404).send("No More")
+    console.log("getUrl 404")
+    res.status(404).send(JSON.stringify({error: "No More"}))
   } else {
     current = runList.pop()
-    res.send(current);
+    console.log('/getUrl, remaining:', runList.length)
+    res.send(JSON.stringify(current));
   }
 })
 
-app.post('/postResult', function (req, res) {
-
+app.post('/postResult', (req, res) => {
+  console.log('/postResult')
   let lhrFilePath = getLhrPath(req.body.response)
-  console.log("result posted")
   if (req.body.result && req.body.result.lhr) {
     fs.writeFileSync(lhrFilePath, JSON.stringify(req.body.result.lhr, null, 2))
   }
-  res.send("got 'em")
+  res.sendStatus(200)
 })
 
-app.listen(3000, () => console.log("Server listening on port 3000!"));
+app.listen(3000, () => console.log('Server listening on port 3000!'));
 
 for (let i = 0; i < SERVER_COUNT; ++i) {
   createServer(program.publicUrl)
