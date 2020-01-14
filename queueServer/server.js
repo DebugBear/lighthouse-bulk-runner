@@ -16,7 +16,7 @@ program
 
 program.parse(process.argv)
 
-const SERVER_COUNT = 3
+const SERVER_COUNT = 2
 
 function getLhrPath(run) {
   let runKey = getRunKey(run)
@@ -38,17 +38,21 @@ const configs = JSON.parse(fs.readFileSync(program.configs, "utf-8"))
 const runList = []
 const runCount = 1
 
+let skippedUrlCount = 0
 for (var runIndex = 0; runIndex < runCount; runIndex++) {
   for (const config of configs) {
     for (const url of urls) {
-      runList.push({
-        url,
-        config,
-        runIndex
-      })
+      let run = { url, config, runIndex}
+      if(fs.existsSync(getLhrPath(run))) {
+        ++skippedUrlCount
+      } else {
+        runList.push(run)
+      }
     }
   }
 }
+
+console.log(`${runList.length} urls to run.\n${skippedUrlCount} urls skipped.`)
 
 app.get('/getUrl', (req, res) => {
   if (runList.length === 0) {
@@ -72,6 +76,11 @@ app.post('/postResult', (req, res) => {
 
 app.listen(3000, () => console.log('Server listening on port 3000!'));
 
-for (let i = 0; i < SERVER_COUNT; ++i) {
-  createServer(program.publicUrl)
+if (runList.length === 0) {
+  console.log("No urls to run - urls are only run through lighthouse if we don't already have results saved in the out dir.")
+}
+else {
+  for (let i = 0; i < SERVER_COUNT; ++i) {
+    createServer(program.publicUrl)
+  }
 }
