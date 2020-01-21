@@ -46,7 +46,9 @@ async function deleteInstance() {
 
     if (response) {
       let data = await collectRunData(response).catch((e) => (
-        console.log(e)
+	request.post(queueServerUrl + "/postResult", {
+          json: {error: e, response: response}
+	})
       ))
 
       if (data) {

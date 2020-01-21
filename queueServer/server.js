@@ -5,6 +5,7 @@ const fs = require("fs")
 const program = require('commander');
 const bodyParser = require('body-parser')
 const createServer = require('./createLighthouseServer')
+const generateStats = require('./generateStats')
 
 app.use(bodyParser.json({ limit: '50mb' }));
 
@@ -36,7 +37,7 @@ const urls = fs.readFileSync(program.urls, "utf-8").split("\n").filter(url => !!
 const configs = JSON.parse(fs.readFileSync(program.configs, "utf-8"))
 
 const runList = []
-const runCount = 1
+const runCount = 2
 
 let skippedUrlCount = 0
 for (var runIndex = 0; runIndex < runCount; runIndex++) {
@@ -51,6 +52,8 @@ for (var runIndex = 0; runIndex < runCount; runIndex++) {
     }
   }
 }
+
+let totalUrls = runList.length
 
 console.log(`${runList.length} urls to run.\n${skippedUrlCount} urls skipped.`)
 
@@ -67,19 +70,31 @@ app.get('/getUrl', (req, res) => {
 
 app.post('/postResult', (req, res) => {
   console.log('/postResult')
-  let lhrFilePath = getLhrPath(req.body.response)
-  if (req.body.result && req.body.result.lhr) {
-    fs.writeFileSync(lhrFilePath, JSON.stringify(req.body.result.lhr, null, 2))
+  if (req.body.error) {
+    console.log(req.body.error)
+  } else {
+    let lhrFilePath = getLhrPath(req.body.response)
+    if (req.body.result && req.body.result.lhr) {
+      fs.writeFileSync(lhrFilePath, JSON.stringify(req.body.result.lhr, null, 2))
+    }
   }
   res.sendStatus(200)
+  --totalUrls
+  if (totalUrls === 0) {
+    console.log("generating stats...")
+    generateStats(urls, configs, runCount)
+    process.exit()
+  }
 })
 
-app.listen(3000, () => console.log('Server listening on port 3000!'));
 
 if (runList.length === 0) {
   console.log("No urls to run - urls are only run through lighthouse if we don't already have results saved in the out dir.")
+  console.log("generating stats...")
+  generateStats(urls, configs, runCount)
 }
 else {
+  app.listen(3000, () => console.log('Server listening on port 3000!'));
   for (let i = 0; i < SERVER_COUNT; ++i) {
     createServer(program.publicUrl)
   }
