@@ -5,5 +5,11 @@
       "onlyCategories": ["performance"],
       "extraHeaders": { "Save-Data": "on" }
     }
+  },
+  {
+    "extends": "lighthouse:default",
+    "settings": {
+      "onlyCategories": ["performance"]
+    }
   }
 ]

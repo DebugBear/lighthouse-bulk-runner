@@ -4,6 +4,8 @@ const Compute = require("@google-cloud/compute");
 
 const ZONE_NAME = 'us-central1-a'
 
+const LH_ATTEMPTS = 4
+
 async function getQueueServerUrl() {
   return await request({
     uri: 'http://metadata.google.internal/computeMetadata/v1/instance/description',
@@ -34,28 +36,40 @@ async function deleteInstance() {
 (async function () {
   let queueServerUrl = await getQueueServerUrl().catch((e) => {
     console.log(e)
-    return deleteInstance()
+    deleteInstance()
   })
 
   let moreUrls = true
   while (moreUrls) {
-    let response = await getNextUrl(queueServerUrl + "/getUrl").catch((e) => {
+    let urlData = await getNextUrl(queueServerUrl + "/getUrl").catch((e) => {
       moreUrls = false
-      return deleteInstance()
+      deleteInstance()
     })
 
-    if (response) {
-      let data = await collectRunData(response).catch((e) => (
+    if (urlData) {
+      console.log(urlData)
+      let error = undefined
+
+      let data = await collectRunData(urlData).catch( function(e) {
+        error = e
+	console.log("\n\nlighthouse error here:\n\n", error)
+      })
+      if (data && data.lhr && data.lhr.runtimeError) {
+        error = data.lhr.runtimeError
+	console.log("\n\nruntime error here:\n\n", error)
+      }
+
+      if (typeof error !== 'undefined') {
 	request.post(queueServerUrl + "/postResult", {
-          json: {error: e, response: response}
+          json: {error: error, response: urlData}
 	}).catch((e) => {
           console.log(e)
 	})
-      ))
-
-      if (data) {
+      }
+      else {
+	console.log(`returning success!`)
         await request.post(queueServerUrl + "/postResult", {
-          json: {result: data, response: response}
+          json: {result: data, response: urlData}
         }).catch((e) => {
           console.log(e)
         })
