@@ -8,5 +8,5 @@ module.exports = async function ({ url, config }) {
     return lighthouse(url, { port: chrome.port }, config).then(results => {
       return chrome.kill().then(() => results)
     });
-  }).catch(e => console.error("error here", url, e))
+  })
 }
