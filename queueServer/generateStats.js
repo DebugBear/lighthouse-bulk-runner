@@ -48,7 +48,9 @@ function generateStats(urls, configs, runCount) {
   let failedUrls = []
   for (const metric of metrics) {
     for (const stat of metric.stats) {
-      csv += "\nurl,config[0],config[1]," + metric.name + "\n"
+
+      csv += metric.name + "\n\n"
+      csv += `\nurl,${configs.map((c, i) => c.name ? c.name : `config[${i}]`).join(",")}\n`
 
       for (const url of urls) {
         let csvLineItems = []
@@ -86,4 +88,4 @@ function generateStats(urls, configs, runCount) {
   fs.writeFileSync("out" + "/stats.csv", csv)
 }
 
-module.exports = {generateStats, getLhrPath}
+module.exports = { generateStats, getLhrPath }
