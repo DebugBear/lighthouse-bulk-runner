@@ -27,16 +27,16 @@ const metrics = [
   {
     name: "Performance Score",
     getValue: lhr => lhr.categories.performance.score * 100,
-    stats: ["median"]
+    stats: ["median", "min", "max"]
   },
   {
     name: "Page weight (kb)",
     getValue: lhr => Math.round(lhr.audits["total-byte-weight"].numericValue / 1024 * 10) / 10,
-    stats: ["median"]
+    stats: ["median", "min", "max"]
   }, {
     name: "TTI",
     getValue: lhr => lhr.audits["interactive"].numericValue,
-    stats: ["median"]
+    stats: ["median", "min", "max"]
   }
 ]
 
@@ -44,15 +44,19 @@ function generateStats(urls, configs, runCount) {
   fs.mkdirSync("out", { recursive: true })
   fs.mkdirSync("out" + "/lhr", { recursive: true })
 
+  let metricData = []
+
   let csv = ""
   let failedUrls = []
   for (const metric of metrics) {
-    for (const stat of metric.stats) {
-      csv += "\nurl,config[0],config[1]," + metric.name + "\n"
+    for (const [statIndex, stat] of Object.entries(metric.stats)) {
+
+      csv += metric.name + ` (${stat})\n\n`
+      csv += `\nurl, ${configs.map((c, i) => c.name ? c.name : `config[${i}]`).join(",")} \n`
 
       for (const url of urls) {
         let csvLineItems = []
-        //let name = url + `,[Config ${getConfigIndexFromHash(configs, getConfigHash(config))}]`
+        //let name = url + `, [Config ${ getConfigIndexFromHash(configs, getConfigHash(config))}]`
         csvLineItems.push(url)
         let hasError = false
         for (const config of configs) {
@@ -76,14 +80,27 @@ function generateStats(urls, configs, runCount) {
           }
           let metricValues = runResults.map(lhr => metric.getValue(lhr))
           csvLineItems.push(stats[stat](metricValues))
+
+          // a bit hacky, but will do for now
+          // we send the full values to the FE, so don't bother saving each stat
+          if (statIndex === '0')
+            metricData.push({
+              url,
+              metric: metric.name,
+              configName: config.name || `config[${i}]`,
+              values: metricValues
+            })
         }
         if (!hasError) {
           csv += csvLineItems.join(",") + '\n'
         }
       }
+
+      csv += "\n"
     }
   }
   fs.writeFileSync("out" + "/stats.csv", csv)
+  fs.writeFileSync("out" + "/data.js", "const data = " + JSON.stringify(metricData, null, 2))
 }
 
-module.exports = {generateStats, getLhrPath}
+module.exports = { generateStats, getLhrPath }
