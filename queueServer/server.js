@@ -4,7 +4,6 @@ const program = require('commander');
 const bodyParser = require('body-parser')
 const createServer = require('./createLighthouseServer')
 const { generateStats, getLhrPath } = require('./generateStats')
-const shuffle = require("./shuffle")
 
 
 const SERVER_COUNT = 10
@@ -45,12 +44,6 @@ for (var runIndex = 0; runIndex < runCount; runIndex++) {
 console.log(`${runList.length} urls to run.\n${skippedUrlCount} urls skipped.`)
 
 let queueLength = runList.length
-
-//randomly shuffle queue of urls. this is so that we are less likely to run 
-//multiple Lighthouse tests for a single url at the same time, which could
-//potentially cause rate limiting issues.
-runList = shuffle(runList)
-
 
 app.get('/getUrl', (req, res) => {
   console.log("geturl")
