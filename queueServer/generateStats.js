@@ -44,10 +44,12 @@ function generateStats(urls, configs, runCount) {
   fs.mkdirSync("out", { recursive: true })
   fs.mkdirSync("out" + "/lhr", { recursive: true })
 
+  let metricData = []
+
   let csv = ""
   let failedUrls = []
   for (const metric of metrics) {
-    for (const stat of metric.stats) {
+    for (const [statIndex, stat] of Object.entries(metric.stats)) {
 
       csv += metric.name + ` (${stat})\n\n`
       csv += `\nurl, ${configs.map((c, i) => c.name ? c.name : `config[${i}]`).join(",")} \n`
@@ -78,6 +80,16 @@ function generateStats(urls, configs, runCount) {
           }
           let metricValues = runResults.map(lhr => metric.getValue(lhr))
           csvLineItems.push(stats[stat](metricValues))
+
+          // a bit hacky, but will do for now
+          // we send the full values to the FE, so don't bother saving each stat
+          if (statIndex === '0')
+            metricData.push({
+              url,
+              metric: metric.name,
+              configName: config.name || `config[${i}]`,
+              values: metricValues
+            })
         }
         if (!hasError) {
           csv += csvLineItems.join(",") + '\n'
@@ -88,6 +100,7 @@ function generateStats(urls, configs, runCount) {
     }
   }
   fs.writeFileSync("out" + "/stats.csv", csv)
+  fs.writeFileSync("out" + "/data.js", "const data = " + JSON.stringify(metricData, null, 2))
 }
 
 module.exports = { generateStats, getLhrPath }
