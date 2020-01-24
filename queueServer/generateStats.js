@@ -27,16 +27,16 @@ const metrics = [
   {
     name: "Performance Score",
     getValue: lhr => lhr.categories.performance.score * 100,
-    stats: ["median"]
+    stats: ["median", "min", "max"]
   },
   {
     name: "Page weight (kb)",
     getValue: lhr => Math.round(lhr.audits["total-byte-weight"].numericValue / 1024 * 10) / 10,
-    stats: ["median"]
+    stats: ["median", "min", "max"]
   }, {
     name: "TTI",
     getValue: lhr => lhr.audits["interactive"].numericValue,
-    stats: ["median"]
+    stats: ["median", "min", "max"]
   }
 ]
 
@@ -49,12 +49,12 @@ function generateStats(urls, configs, runCount) {
   for (const metric of metrics) {
     for (const stat of metric.stats) {
 
-      csv += metric.name + "\n\n"
-      csv += `\nurl,${configs.map((c, i) => c.name ? c.name : `config[${i}]`).join(",")}\n`
+      csv += metric.name + ` (${stat})\n\n`
+      csv += `\nurl, ${configs.map((c, i) => c.name ? c.name : `config[${i}]`).join(",")} \n`
 
       for (const url of urls) {
         let csvLineItems = []
-        //let name = url + `,[Config ${getConfigIndexFromHash(configs, getConfigHash(config))}]`
+        //let name = url + `, [Config ${ getConfigIndexFromHash(configs, getConfigHash(config))}]`
         csvLineItems.push(url)
         let hasError = false
         for (const config of configs) {
@@ -83,6 +83,8 @@ function generateStats(urls, configs, runCount) {
           csv += csvLineItems.join(",") + '\n'
         }
       }
+
+      csv += "\n"
     }
   }
   fs.writeFileSync("out" + "/stats.csv", csv)
