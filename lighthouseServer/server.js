@@ -9,7 +9,7 @@ const LH_ATTEMPTS = 4
 async function getQueueServerUrl() {
   return await request({
     uri: 'http://metadata.google.internal/computeMetadata/v1/instance/description',
-    headers: {'Metadata-Flavor': 'Google'},
+    headers: { 'Metadata-Flavor': 'Google' },
     json: true
   }).then((response) => (
     response.queueServerUrl
@@ -26,11 +26,12 @@ async function getNextUrl(url) {
 }
 
 async function deleteInstance() {
-  const name =  process.env.HOSTNAME
+  const name = process.env.HOSTNAME
   const compute = new Compute()
   const zone = compute.zone(ZONE_NAME)
   const vmObj = zone.vm(name)
   return await vmObj.delete()
+  process.exit()
 }
 
 (async function () {
@@ -50,26 +51,26 @@ async function deleteInstance() {
       console.log(urlData)
       let error = undefined
 
-      let data = await collectRunData(urlData).catch( function(e) {
+      let data = await collectRunData(urlData).catch(function (e) {
         error = e
-	console.log("\n\nlighthouse error here:\n\n", error)
+        console.log("\n\nlighthouse error here:\n\n", error)
       })
       if (data && data.lhr && data.lhr.runtimeError) {
         error = data.lhr.runtimeError
-	console.log("\n\nruntime error here:\n\n", error)
+        console.log("\n\nruntime error here:\n\n", error)
       }
 
       if (typeof error !== 'undefined') {
-	request.post(queueServerUrl + "/postResult", {
-          json: {error: error, response: urlData}
-	}).catch((e) => {
+        await request.post(queueServerUrl + "/postResult", {
+          json: { error: error, response: urlData }
+        }).catch((e) => {
           console.log(e)
-	})
+        })
       }
       else {
-	console.log(`returning success!`)
+        console.log(`returning success!`)
         await request.post(queueServerUrl + "/postResult", {
-          json: {result: data, response: urlData}
+          json: { result: data, response: urlData }
         }).catch((e) => {
           console.log(e)
         })
