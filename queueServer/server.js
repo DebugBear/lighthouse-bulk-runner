@@ -4,10 +4,11 @@ const program = require('commander');
 const bodyParser = require('body-parser')
 const createServer = require('./createLighthouseServer')
 const { generateStats, getLhrPath } = require('./generateStats')
-const normaliseUrl = require('./normalizeUrls')
+const normaliseUrl = require('./normalizeUrl')
 
 const SERVER_COUNT = 10
 const RETRY_COUNT = 3
+let retry_current_count = 0;
 
 program
   .option('--urls <urls>', 'Text file containing a list of URLs you wante to compare (separated by line breaks)')
@@ -18,7 +19,7 @@ program
 program.parse(process.argv)
 
 const app = express();
-app.use(bodyParser.json({ limit: '50mb', extended: true }));
+app.use(bodyParser.json({ limit: '100mb', extended: true }));
 
 let urls = fs.readFileSync(program.urls, "utf-8").split("\n").filter(url => !!url)
 const configs = JSON.parse(fs.readFileSync(program.configs, "utf-8"))
@@ -34,7 +35,7 @@ let normalizedUrls = [];
     ).catch(err => { console.log(err.message) })
   }
   urls = normalizedUrls
-  console.log("urls", urls)
+
 
   let skippedUrlCount = 0
   for (var runIndex = 0; runIndex < runCount; runIndex++) {
@@ -55,9 +56,9 @@ let normalizedUrls = [];
   let queueLength = runList.length
 
   app.get('/getUrl', (req, res) => {
-    console.log("geturl")
+    console.log('/getUrl')
     if (runList.length === 0) {
-      console.log("getUrl 404")
+      console.log("/getUrl 404")
       res.status(404).send(JSON.stringify({ error: "No More" }))
     } else {
       current = runList.pop()
@@ -65,29 +66,52 @@ let normalizedUrls = [];
     }
   })
 
+
+  let failedConfigs = {}
+
+
   app.post('/postResult', (req, res) => {
+    console.log('/postResult')
     let runSettings = req.body.response
-    let lhrFilePath = getLhrPath(runSettings)
 
-    if (req.body.error) {
-      console.log("retrying...", req.body)
-      if (retriedUrls[lhrFilePath] === undefined) {
-        retriedUrls[lhrFilePath] = 0
-      }
-      if (retriedUrls[lhrFilePath] < RETRY_COUNT) {
-        retriedUrls[lhrFilePath] += 1
-        runList.push(runSettings)
-      } else {
-        --queueLength
-      }
-
-    } else if (req.body.result && req.body.result.lhr) {
+    if (req.body.result && req.body.result.lhr) {
+      let lhrFilePath = getLhrPath(runSettings)
       fs.writeFileSync(lhrFilePath, JSON.stringify(req.body.result.lhr, null, 2))
-      --queueLength
     }
+    else {
+      if (req.body.error) {
+        console.log(req.body.error)
+      }
+
+      key = runSettings.url + JSON.stringify(runSettings.config)
+
+      if (!failedConfigs[key]) {
+        failedConfigs[key] = [runSettings]
+      } else {
+        failedConfigs[key].unshift(runSettings)
+      }
+    }
+
+    --queueLength
+
+
     console.log("remaining urls", queueLength)
 
+
+    if (queueLength === 0 && retry_current_count < RETRY_COUNT) {
+      for (var key of Object.keys(failedConfigs)) {
+        if (failedConfigs[key].length < runCount) {
+          runList = runList.concat(failedConfigs[key])
+        } else {
+        }
+      }
+      failedConfigs = {}
+      queueLength = runList.length
+      retry_current_count++
+    }
+
     res.sendStatus(200)
+
 
     if (queueLength === 0) {
       console.log("generating stats...")
@@ -104,9 +128,13 @@ let normalizedUrls = [];
   }
   else {
     app.listen(3000, () => console.log('Server listening on port 3000!'));
-    for (let i = 0; i < SERVER_COUNT; ++i) {
+    let maxServerCount = SERVER_COUNT;
+    if (maxServerCount > Math.ceil(runList.length / 3.0)) {
+      maxServerCount = Math.ceil(runList.length / 3.0)
+    }
+    for (let i = 0; i < maxServerCount; ++i) {
       console.log("createServer")
-      createServer(program.publicUrl)
+      createServer(program.publicUrl, SERVER_COUNT)
     }
   }
 })();
