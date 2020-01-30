@@ -5,6 +5,7 @@ const bodyParser = require('body-parser')
 const createServer = require('./createLighthouseServer')
 const { generateStats, getLhrPath } = require('./generateStats')
 const normaliseUrl = require('./normalizeUrl')
+const eachLimit = require('./eachLimit')
 
 const SERVER_COUNT = 10
 const RETRY_COUNT = 3
@@ -26,14 +27,17 @@ const configs = JSON.parse(fs.readFileSync(program.configs, "utf-8"))
 
 let runList = []
 const runCount = 5
-let retriedUrls = {}
-let normalizedUrls = [];
+let failedConfigs = {};
+
 (async () => {
-  for (let url of urls) {
-    await normaliseUrl(url).then(newUrl =>
+
+  let normalizedUrls = [];
+  await eachLimit(urls, (url) => (
+    normaliseUrl(url).then(newUrl =>
       normalizedUrls.push(newUrl)
     ).catch(err => { console.log(err.message) })
-  }
+  ), { limit: 25 })
+
   urls = normalizedUrls
 
 
@@ -67,51 +71,49 @@ let normalizedUrls = [];
   })
 
 
-  let failedConfigs = {}
 
 
   app.post('/postResult', (req, res) => {
     console.log('/postResult')
-    let runSettings = req.body.response
+    let runSettings = req.body.runSettings
+    let result = req.body.runResult
 
-    if (req.body.result && req.body.result.lhr) {
+    let error = null
+    if (result.error) {
+      error = result.error
+    }
+    else if (result.lhr && result.lhr.runtimeError) {
+      error = result.lhr.runtimeError
+    }
+
+    if (error) {
       let lhrFilePath = getLhrPath(runSettings)
-      fs.writeFileSync(lhrFilePath, JSON.stringify(req.body.result.lhr, null, 2))
+      let retryCount = failedConfigs[lhrFilePath] || 0
+      retryCount++
+      failedConfigs[lhrFilePath] = retryCount
+      console.log("error:\n", error)
+
+      if (retryCount > RETRY_COUNT) {
+        console.log("This Url Failed too many times!\n", runSettings)
+        --queueLength
+      } else {
+        console.log(`retrying ${retryCount}\n${runSettings}`)
+        runList.unshift(runSettings)
+      }
+
+    }
+    else if (!result.lhr) {
+      console.log("result.lhr does not exits. this is very strange. response.body:\n", result.body)
     }
     else {
-      if (req.body.error) {
-        console.log(req.body.error)
-      }
-
-      key = runSettings.url + JSON.stringify(runSettings.config)
-
-      if (!failedConfigs[key]) {
-        failedConfigs[key] = [runSettings]
-      } else {
-        failedConfigs[key].unshift(runSettings)
-      }
-    }
-
-    --queueLength
-
-
-    console.log("remaining urls", queueLength)
-
-
-    if (queueLength === 0 && retry_current_count < RETRY_COUNT) {
-      for (var key of Object.keys(failedConfigs)) {
-        if (failedConfigs[key].length < runCount) {
-          runList = runList.concat(failedConfigs[key])
-        } else {
-        }
-      }
-      failedConfigs = {}
-      queueLength = runList.length
-      retry_current_count++
+      //no error
+      console.log("writing Results")
+      let lhrFilePath = getLhrPath(runSettings)
+      fs.writeFileSync(lhrFilePath, JSON.stringify(result.lhr, null, 2))
+      --queueLength
     }
 
     res.sendStatus(200)
-
 
     if (queueLength === 0) {
       console.log("generating stats...")
@@ -134,7 +136,7 @@ let normalizedUrls = [];
     }
     for (let i = 0; i < maxServerCount; ++i) {
       console.log("createServer")
-      createServer(program.publicUrl, SERVER_COUNT)
+      await createServer(program.publicUrl, SERVER_COUNT)
     }
   }
 })();
