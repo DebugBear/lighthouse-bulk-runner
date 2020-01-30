@@ -4,8 +4,6 @@ const Compute = require("@google-cloud/compute");
 
 const ZONE_NAME = 'us-central1-a'
 
-const LH_ATTEMPTS = 4
-
 async function getQueueServerUrl() {
   return await request({
     uri: 'http://metadata.google.internal/computeMetadata/v1/instance/description',
@@ -15,13 +13,6 @@ async function getQueueServerUrl() {
     response.queueServerUrl
   )).catch((e) => {
     console.log(e)
-  })
-}
-
-async function getNextUrl(url) {
-  return await request(url).then((res) => {
-    response = JSON.parse(res)
-    return response
   })
 }
 
@@ -37,46 +28,32 @@ async function deleteInstance() {
 (async function () {
   let queueServerUrl = await getQueueServerUrl().catch((e) => {
     console.log(e)
-    deleteInstance()
+    return deleteInstance()
   })
 
-  let moreUrls = true
-  while (moreUrls) {
-    let urlData = await getNextUrl(queueServerUrl + "/getUrl").catch((e) => {
-      moreUrls = false
-      deleteInstance()
+  async function getNextUrl() {
+    return await request(queueServerUrl + "/getUrl").then((res) => (
+      response = JSON.parse(res)
+    )).catch((e) => {
+      console.log(e)
+      return null
     })
+  }
 
-    if (urlData) {
-      console.log(urlData)
-      let error = undefined
+  const postResult = async (data) => {
+    await request.post(queueServerUrl + "/postResult", {
+      json: data
+    }).catch(console.log)
+  }
 
-      let data = await collectRunData(urlData).catch(function (e) {
-        error = e
-        console.log("\n\nlighthouse error here:\n\n", error)
-      })
-      if (data && data.lhr && data.lhr.runtimeError) {
-        error = data.lhr.runtimeError
-        console.log("\n\nruntime error here:\n\n", error)
-      }
-
-      if (typeof error !== 'undefined') {
-        await request.post(queueServerUrl + "/postResult", {
-          json: { error: error, response: urlData }
-        }).catch((e) => {
-          console.log(e)
-        })
-      }
-      else {
-        console.log(`returning success!`)
-        await request.post(queueServerUrl + "/postResult", {
-          json: { result: data, response: urlData }
-        }).catch((e) => {
-          console.log(e)
-        })
-      }
+  let runSettings = null
+  while (runSettings = await getNextUrl()) {
+    let runResult = await collectRunData(runSettings)
+    if (runResult.error)
+      await postResult({ runResult, runSettings })
+    else {
+      await postResult({ runResult: { lhr: runResult.lhr }, runSettings })
     }
   }
+  await deleteInstance()
 })()
-
-
