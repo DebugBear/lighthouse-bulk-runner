@@ -32,7 +32,7 @@ module.exports = async function (clientUrl, maxVMCount) {
     return
   }
 
-  const sourceInstanceTemplate = `projects/${projectId}/global/instanceTemplates/dbr-deletable-1`;
+  const sourceInstanceTemplate = `projects/${projectId}/global/instanceTemplates/dbr-deletable`;
   const url = `https://www.googleapis.com/compute/v1/projects/${projectId}/zones/${zone}/instances?sourceInstanceTemplate=${sourceInstanceTemplate}`;
   let vmName = "vm-" + Math.round(Math.random() * 1000000)
 
