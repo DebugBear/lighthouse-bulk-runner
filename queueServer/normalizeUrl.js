@@ -1,5 +1,6 @@
 const fetch = require("node-fetch")
 
+const userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 
 function tryUrl(url) {
   //console.log("Trying: ", url)
@@ -10,8 +11,9 @@ function tryUrl(url) {
       resolve(null)
     }, 10000)
     try {
-      const r = await fetch(url)
+      const r = await fetch(url, { headers: { "User-Agent": userAgent, 'Content-Type': 'text/plain', } })
       if (r.status < 200 || r.status >= 400) {
+        console.log(url, r.status)
         throw new Error(r.status)
       }
       clearTimeout(timeout)
@@ -27,7 +29,9 @@ function tryUrl(url) {
 
 
 module.exports = async function findProtocolAndSubdomain(url) {
-
+  if (url.search(/https?:\/\//) === 0) {
+    return url
+  }
   let urls = [
     "https://" + url,
     "http://" + url,
