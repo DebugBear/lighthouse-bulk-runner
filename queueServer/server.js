@@ -7,9 +7,12 @@ const { generateStats, getLhrPath } = require('./generateStats')
 const normaliseUrl = require('./normalizeUrl')
 const eachLimit = require('./eachLimit')
 
-const SERVER_COUNT = 10
-const RETRY_COUNT = 3
-let retry_current_count = 0;
+const SERVER_COUNT = 3
+const RETRY_COUNT = 1
+
+let currentlyProcessing = new Map()
+const threeMinutes = 3 * 60 * 1000
+
 
 program
   .option('--urls <urls>', 'Text file containing a list of URLs you wante to compare (separated by line breaks)')
@@ -40,7 +43,6 @@ let failedConfigs = {};
 
   urls = normalizedUrls
 
-
   let skippedUrlCount = 0
   for (var runIndex = 0; runIndex < runCount; runIndex++) {
     for (const config of configs) {
@@ -57,16 +59,39 @@ let failedConfigs = {};
 
   console.log(`${runList.length} urls to run.\n${skippedUrlCount} urls skipped.`)
 
-  let queueLength = runList.length
-
   app.get('/getUrl', (req, res) => {
-    console.log('/getUrl')
+    console.log('/getUrl - remaining queue length:', runList.length)
+
     if (runList.length === 0) {
+      console.log("currentlyProcessing.size:", currentlyProcessing.size)
+      let currentTime = (new Date()).getTime()
+      console.log("currentTime", currentTime)
+      currentlyProcessing.forEach((val, key, map) => {
+        let time = val.timestamp
+        let config = val.settings
+        console.log(key, "time differential:", currentTime - time, "compared time", threeMinutes)
+        if (currentTime - time > threeMinutes) {
+          console.log("found url that has timed out...")
+          queue.push(config)
+          map.delete(key)
+        }
+      })
+    }
+
+    if (runList.length > 0) {
+      let current = runList.pop()
+      res.send(JSON.stringify(current))
+
+      let hash = getLhrPath(current)
+      currentlyProcessing.set(hash, { timestamp: (new Date()).getTime(), settings: current })
+    }
+
+    else if (runList.length === 0 && currentlyProcessing.size === 0) {
       console.log("/getUrl 404")
       res.status(404).send(JSON.stringify({ error: "No More" }))
     } else {
-      current = runList.pop()
-      res.send(JSON.stringify(current));
+      console.log("waiting...")
+      res.status(200).send(JSON.stringify({ wait: true }))
     }
   })
 
@@ -77,6 +102,9 @@ let failedConfigs = {};
     console.log('/postResult')
     let runSettings = req.body.runSettings
     let result = req.body.runResult
+    let hash = getLhrPath(runSettings)
+    currentlyProcessing.delete(hash)
+
 
     let error = null
     if (result.error) {
@@ -95,7 +123,6 @@ let failedConfigs = {};
 
       if (retryCount > RETRY_COUNT) {
         console.log("This Url Failed too many times!\n", runSettings)
-        --queueLength
       } else {
         console.log(`retrying ${retryCount}\n${runSettings}`)
         runList.unshift(runSettings)
@@ -110,12 +137,11 @@ let failedConfigs = {};
       console.log("writing Results")
       let lhrFilePath = getLhrPath(runSettings)
       fs.writeFileSync(lhrFilePath, JSON.stringify(result.lhr, null, 2))
-      --queueLength
     }
 
     res.sendStatus(200)
 
-    if (queueLength === 0) {
+    if (currentlyProcessing.size === 0 && runList.length === 0) {
       console.log("generating stats...")
       generateStats(urls, configs, runCount)
       process.exit()
@@ -139,4 +165,5 @@ let failedConfigs = {};
       await createServer(program.publicUrl, SERVER_COUNT)
     }
   }
+
 })();

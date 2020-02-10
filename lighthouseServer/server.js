@@ -25,6 +25,15 @@ async function deleteInstance() {
   process.exit()
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+
+
+
 (async function () {
   let queueServerUrl = await getQueueServerUrl().catch((e) => {
     console.log(e)
@@ -32,9 +41,15 @@ async function deleteInstance() {
   })
 
   async function getNextUrl() {
-    return await request(queueServerUrl + "/getUrl").then((res) => (
+    return await request(queueServerUrl + "/getUrl").then(async (res) => {
       response = JSON.parse(res)
-    )).catch((e) => {
+      if (response.wait) {
+        console.log("sleeping 20 seconds...")
+        await sleep(20000)
+        return await getNextUrl()
+      }
+      return response
+    }).catch((e) => {
       console.log(e)
       return null
     })
