@@ -1,4 +1,5 @@
 
+const header = document.querySelector("#header")
 
 const container = document.querySelector("#myDiv")
 
@@ -8,16 +9,32 @@ let metric = "Page weight (kb)"
 let urls = _.uniq(data.map(d => d.url))
 let metrics = _.uniq(data.map(d => d.metric))
 
-metrics.forEach(metric => {
-  const h2 = document.createElement("h2")
-  h2.innerText = metric
-  container.appendChild(h2)
+const select = document.createElement("select")
+header.appendChild(select)
 
-  urls.forEach(url => {
-    render(url, metric)
+urls.sort()
+urls.forEach(url => {
+  let option = document.createElement("option")
+  option.value = url
+  option.innerText = url.replace(/https?\:\/\//, "")
+  select.append(option)
+})
+
+
+select.addEventListener("change", (e) => {
+  container.innerHTML = ""
+  metrics.forEach(metric => {
+    const h2 = document.createElement("h2")
+    h2.innerText = metric
+    container.appendChild(h2)
+
+    render(e.target.value, metric)
+
   })
 
 })
+
+
 
 function render(url, metric) {
   let urlData = data.filter(d => d.url === url)
